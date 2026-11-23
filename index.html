@@ -235,17 +235,6 @@
   <section id="view-settings" class="hidden">
     <header><div><h1>Settings ⚙️</h1><p>Make the studio yours.</p></div><div class="bag">🎀</div></header>
     <div class="card">
-      <label class="f" style="margin-top:0">Default weekly goal ($) — new weeks start here</label>
-      <input class="field" id="defaultGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
-      <label class="f">Default monthly goal ($) — new months start here</label>
-      <input class="field" id="defaultMonthlyGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
-      <label class="f">Set Daily Goal ($) — the weekly breakdown bars fill toward this</label>
-      <input class="field" id="defaultDailyGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
-      <div style="height:12px"></div>
-      <button class="btn btn-pink" id="saveSettings">Save settings</button>
-      <p class="small">Sales are saved on this device only. They don't sync to other devices — a cloud upgrade can come later.</p>
-    </div>
-    <div class="card">
       <div class="break-head"><h2>Danger zone</h2></div>
       <p class="small">Erase every week and start fresh. This can't be undone.</p>
       <button class="btn btn-ghost" id="clearAll" style="color:#c0392b; border-color:#f0c4c4">Clear all data</button>
@@ -387,9 +376,6 @@ function render(){
   document.getElementById('addToday').disabled = viewOffset!==0;
   document.getElementById('addToday').style.opacity = viewOffset===0 ? '1' : '.5';
   renderWeeks(); renderInsights();
-  document.getElementById('defaultGoalInput').value = state.defaultGoal;
-  document.getElementById('defaultMonthlyGoalInput').value = state.defaultMonthlyGoal;
-  document.getElementById('defaultDailyGoalInput').value = state.defaultDailyGoal;
   save();
 }
 
@@ -543,16 +529,6 @@ function renderInsights(){
     : 'No sales logged yet — your strongest day will show up here. 💗';
 }
 
-document.getElementById('saveSettings').onclick = ()=>{
-  const v = parseFloat(document.getElementById('defaultGoalInput').value);
-  const mv = parseFloat(document.getElementById('defaultMonthlyGoalInput').value);
-  const dv = parseFloat(document.getElementById('defaultDailyGoalInput').value);
-  if(!isNaN(v) && v >= 0) state.defaultGoal = v;
-  if(!isNaN(mv) && mv >= 0) state.defaultMonthlyGoal = mv;
-  if(!isNaN(dv) && dv >= 0) state.defaultDailyGoal = dv;
-  save();
-  alert('Saved 💗 New weeks start at ' + money(state.defaultGoal) + ', new months at ' + money(state.defaultMonthlyGoal) + ', daily goal ' + money(state.defaultDailyGoal) + '.');
-};
 document.getElementById('clearAll').onclick = ()=>{
   if(confirm('Erase ALL weeks and settings? This cannot be undone.')){
     state = freshState(); localStorage.removeItem(KEY); viewOffset = 0; render();
