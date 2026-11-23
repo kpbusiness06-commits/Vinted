@@ -25,6 +25,10 @@
   .bag{width:52px; height:52px; border-radius:16px; background:#fbe3ee; display:flex; align-items:center; justify-content:center; font-size:24px; flex:none;}
   .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:14px;}
   .goal-card{background:linear-gradient(160deg,var(--lav-soft),#ded0fb); box-shadow:var(--shadow);}
+  .month-card{background:linear-gradient(160deg,#b7a3f2,#d9ccfc); box-shadow:var(--shadow);}
+  .month-card .goal-amount{font-size:52px; color:#5b3ea8;}
+  .weekly-card .goal-amount{font-size:30px; margin:6px 0 2px;}
+  .weekly-card .bar{height:10px; background:#f3e8f0;}
   .goal-top{display:flex; justify-content:space-between; align-items:center;}
   .goal-label{font-weight:800; font-size:14px; letter-spacing:.6px;}
   .week-badge{background:var(--lav); color:#fff; font-size:12px; font-weight:700; padding:5px 12px; border-radius:999px;}
@@ -112,7 +116,27 @@
       <button id="nextWeek">Next ›</button>
     </div>
 
-    <div class="card goal-card">
+    <div class="card month-card">
+      <div class="goal-top">
+        <div class="goal-label">THIS MONTH'S GOAL</div>
+        <div class="week-badge" id="monthBadge">Month</div>
+      </div>
+      <div class="goal-amount" id="mGoalAmount">$0.00</div>
+      <div class="goal-sub"><span id="mSalesSoFar">Sales so far: $0.00</span><span id="mPct">0%</span></div>
+      <div class="bar"><div id="mGoalBar"></div></div>
+      <div class="goal-left" id="mGoalLeft"></div>
+      <button class="edit-goal" id="editMGoalBtn">✎ Edit this month's goal</button>
+      <div class="editor hidden" id="mGoalEditor">
+        <label class="f" style="margin-top:0">Goal for this month ($)</label>
+        <input class="field" id="mGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
+        <div class="row">
+          <button class="btn btn-pink" id="mGoalSave">Save goal</button>
+          <button class="btn btn-ghost" id="mGoalCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card goal-card weekly-card">
       <div class="goal-top">
         <div class="goal-label">THIS WEEK'S GOAL</div>
         <div class="week-badge" id="weekBadge">Week 01</div>
@@ -138,6 +162,7 @@
     </div>
     <div class="stat-row">
       <div class="stat blush"><div class="ic">🎀</div><div class="lbl">Sales days</div><div class="val" id="salesDays">0 / 7</div></div>
+      <div class="stat peach"><div class="ic">🗓️</div><div class="lbl">Monthly sales</div><div class="val" id="monthlySales">$0.00</div></div>
     </div>
 
     <div class="card">
@@ -188,6 +213,10 @@
       <div class="chart" id="insChart"></div>
     </div>
     <div class="card">
+      <div class="break-head"><h2>Monthly totals</h2><span>LAST 6 MONTHS</span></div>
+      <div id="insMonths"></div>
+    </div>
+    <div class="card">
       <div class="break-head"><h2>Strongest weekday</h2></div>
       <p id="insWeekday" style="margin:8px 0 0">No sales logged yet — your strongest day will show up here. 💗</p>
     </div>
@@ -199,6 +228,8 @@
     <div class="card">
       <label class="f" style="margin-top:0">Default weekly goal ($) — new weeks start here</label>
       <input class="field" id="defaultGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
+      <label class="f">Default monthly goal ($) — new months start here</label>
+      <input class="field" id="defaultMonthlyGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
       <div style="height:12px"></div>
       <button class="btn btn-pink" id="saveSettings">Save settings</button>
       <p class="small">Sales are saved on this device only. They don't sync to other devices — a cloud upgrade can come later.</p>
@@ -227,8 +258,10 @@ const money = n => '$' + (Math.round(n*100)/100).toLocaleString('en-US',{minimum
 function load(){
   try{ return JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ return null; }
 }
-function freshState(){ return { defaultGoal: 350, weeks: {} }; }
+function freshState(){ return { defaultGoal: 350, defaultMonthlyGoal: 1400, weeks: {}, months: {} }; }
 let state = load() || freshState();
+if(state.defaultMonthlyGoal === undefined) state.defaultMonthlyGoal = 1400;
+if(!state.months) state.months = {};
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
 function sundayOf(d){
@@ -250,6 +283,27 @@ function getWeek(offset){
   return state.weeks[k];
 }
 function weekTotal(w){ return w.days.reduce((a,b)=>a+(b||0),0); }
+function monthKeyOf(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+function viewedMonthKey(){
+  const s = sundayOf(new Date()); s.setDate(s.getDate() + viewOffset*7);
+  return monthKeyOf(s);
+}
+function getMonthGoal(mk){
+  if(state.months[mk] && state.months[mk].goal !== undefined) return state.months[mk].goal;
+  return state.defaultMonthlyGoal;
+}
+function monthTotal(mk){
+  let t = 0;
+  Object.keys(state.weeks).forEach(k=>{
+    const s = new Date(k + 'T12:00:00');
+    state.weeks[k].days.forEach((v,i)=>{
+      if(!v) return;
+      const d = new Date(s); d.setDate(d.getDate()+i);
+      if(monthKeyOf(d) === mk) t += v;
+    });
+  });
+  return t;
+}
 function fmtRange(offset){
   const s = sundayOf(new Date()); s.setDate(s.getDate()+offset*7);
   const e = new Date(s); e.setDate(e.getDate()+6);
@@ -286,6 +340,22 @@ function render(){
   document.getElementById('dailyAvg').textContent = money(total/7);
   document.getElementById('salesDays').textContent = daysWith + ' / 7';
 
+  const mk = viewedMonthKey();
+  const mTotal = monthTotal(mk);
+  const mGoal = getMonthGoal(mk);
+  const mPct = mGoal > 0 ? Math.min(100, mTotal/mGoal*100) : 0;
+  const mLeft = Math.max(0, mGoal - mTotal);
+  const mDate = new Date(mk + '-15T12:00:00');
+  document.getElementById('monthBadge').textContent = mDate.toLocaleDateString('en-US',{month:'short', year:'numeric'});
+  document.getElementById('mGoalAmount').textContent = money(mGoal);
+  document.getElementById('mSalesSoFar').textContent = 'Sales so far: ' + money(mTotal);
+  document.getElementById('mPct').textContent = (Math.round(mPct*10)/10) + '%';
+  document.getElementById('mGoalBar').style.width = mPct + '%';
+  document.getElementById('mGoalLeft').innerHTML = mGoal === 0
+    ? 'Set a goal for this month 💜'
+    : (mLeft > 0 ? money(mLeft) + ' left to reach your goal 💜' : 'Monthly goal reached — incredible! 🎉💜');
+  document.getElementById('monthlySales').textContent = money(mTotal);
+
   const todayIdx = (viewOffset===0) ? new Date().getDay() : -1;
   const maxDay = Math.max(1, ...w.days.map(d=>d||0));
   const wrap = document.getElementById('days');
@@ -303,6 +373,7 @@ function render(){
   document.getElementById('addToday').style.opacity = viewOffset===0 ? '1' : '.5';
   renderWeeks(); renderInsights();
   document.getElementById('defaultGoalInput').value = state.defaultGoal;
+  document.getElementById('defaultMonthlyGoalInput').value = state.defaultMonthlyGoal;
   save();
 }
 
@@ -340,6 +411,22 @@ document.getElementById('goalSave').onclick = ()=>{
   render();
 };
 document.getElementById('goalCancel').onclick = ()=> document.getElementById('goalEditor').classList.add('hidden');
+
+document.getElementById('editMGoalBtn').onclick = ()=>{
+  document.getElementById('mGoalInput').value = getMonthGoal(viewedMonthKey());
+  document.getElementById('mGoalEditor').classList.remove('hidden');
+};
+document.getElementById('mGoalSave').onclick = ()=>{
+  const v = parseFloat(document.getElementById('mGoalInput').value);
+  if(!isNaN(v) && v >= 0){
+    const mk = viewedMonthKey();
+    if(!state.months[mk]) state.months[mk] = {};
+    state.months[mk].goal = v;
+  }
+  document.getElementById('mGoalEditor').classList.add('hidden');
+  render();
+};
+document.getElementById('mGoalCancel').onclick = ()=> document.getElementById('mGoalEditor').classList.add('hidden');
 
 document.getElementById('addToday').onclick = ()=>{
   const v = parseFloat(document.getElementById('todayInput').value);
@@ -405,6 +492,22 @@ function renderInsights(){
     col.innerHTML = '<div class="cv">'+money(t).replace('.00','')+'</div><div class="cb" style="height:'+Math.max(4, t/maxT*84)+'px"></div><div class="cl">'+new Date(k+'T12:00:00').toLocaleDateString('en-US',{month:'numeric', day:'numeric'})+'</div>';
     chart.appendChild(col);
   });
+  const mEl = document.getElementById('insMonths');
+  mEl.innerHTML = '';
+  const now = new Date();
+  for(let back=5; back>=0; back--){
+    const d = new Date(now.getFullYear(), now.getMonth()-back, 15);
+    const mk = monthKeyOf(d);
+    const t = monthTotal(mk);
+    const g = getMonthGoal(mk);
+    const p = g > 0 ? Math.min(100, t/g*100) : 0;
+    const row = document.createElement('div');
+    row.className = 'hist-item';
+    row.innerHTML = '<div><div class="t">' + d.toLocaleDateString('en-US',{month:'long', year:'numeric'}) + '</div>' +
+      '<div class="s">' + money(t) + ' of ' + money(g) + ' goal · ' + (Math.round(p*10)/10) + '%</div>' +
+      '<div class="mini-bar"><div style="width:'+p+'%"></div></div></div>';
+    mEl.appendChild(row);
+  }
   const maxWd = Math.max(...byWeekday);
   document.getElementById('insWeekday').innerHTML = maxWd > 0
     ? '<strong>' + DAY_FULL[byWeekday.indexOf(maxWd)] + '</strong> is your money day — ' + money(maxWd) + ' sold across all weeks. 💗'
@@ -413,7 +516,11 @@ function renderInsights(){
 
 document.getElementById('saveSettings').onclick = ()=>{
   const v = parseFloat(document.getElementById('defaultGoalInput').value);
-  if(!isNaN(v) && v >= 0){ state.defaultGoal = v; save(); alert('Saved 💗 New weeks will start at ' + money(v) + '.'); }
+  const mv = parseFloat(document.getElementById('defaultMonthlyGoalInput').value);
+  if(!isNaN(v) && v >= 0) state.defaultGoal = v;
+  if(!isNaN(mv) && mv >= 0) state.defaultMonthlyGoal = mv;
+  save();
+  alert('Saved 💗 New weeks start at ' + money(state.defaultGoal) + ', new months at ' + money(state.defaultMonthlyGoal) + '.');
 };
 document.getElementById('clearAll').onclick = ()=>{
   if(confirm('Erase ALL weeks and settings? This cannot be undone.')){

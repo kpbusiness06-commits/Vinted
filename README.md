@@ -3,7 +3,8 @@
 A little business command center for a Vinted seller — Pastel Pop edition.
 
 **What it does**
-- Weekly goal (Sunday–Saturday), set a different target each week
+- Monthly goal as the big headline number, set a different target each month (default $1,400)
+- Weekly goal (Sunday–Saturday) underneath it, set a different target each week
 - Daily sales entry — tap any day, or use the quick entry on Home
 - Auto calculations: weekly total, % of goal, amount left, daily average, sales days
 - Week navigation and full weekly history
