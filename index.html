@@ -178,6 +178,15 @@
         </div>
       </div>
       <div class="break-foot"><span>7-day sales tracker</span><span id="breakFootRight">Tap a day to edit</span></div>
+      <button class="edit-goal" id="editDGoalBtn" style="color:var(--pink-deep)">✎ Edit daily goal</button>
+      <div class="editor hidden" id="dGoalEditor">
+        <label class="f" style="margin-top:0">Daily goal ($)</label>
+        <input class="field" id="dGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
+        <div class="row">
+          <button class="btn btn-pink" id="dGoalSave">Save goal</button>
+          <button class="btn btn-ghost" id="dGoalCancel">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <div class="card quick">
@@ -434,6 +443,19 @@ document.getElementById('mGoalSave').onclick = ()=>{
   render();
 };
 document.getElementById('mGoalCancel').onclick = ()=> document.getElementById('mGoalEditor').classList.add('hidden');
+
+document.getElementById('editDGoalBtn').onclick = ()=>{
+  document.getElementById('dGoalInput').value = state.defaultDailyGoal;
+  document.getElementById('dGoalEditor').classList.remove('hidden');
+  document.getElementById('dGoalInput').focus();
+};
+document.getElementById('dGoalSave').onclick = ()=>{
+  const v = parseFloat(document.getElementById('dGoalInput').value);
+  if(!isNaN(v) && v >= 0) state.defaultDailyGoal = v;
+  document.getElementById('dGoalEditor').classList.add('hidden');
+  render();
+};
+document.getElementById('dGoalCancel').onclick = ()=> document.getElementById('dGoalEditor').classList.add('hidden');
 
 document.getElementById('addToday').onclick = ()=>{
   const v = parseFloat(document.getElementById('todayInput').value);
