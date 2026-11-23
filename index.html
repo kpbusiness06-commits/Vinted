@@ -230,6 +230,8 @@
       <input class="field" id="defaultGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
       <label class="f">Default monthly goal ($) — new months start here</label>
       <input class="field" id="defaultMonthlyGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
+      <label class="f">Set Daily Goal ($) — the weekly breakdown bars fill toward this</label>
+      <input class="field" id="defaultDailyGoalInput" type="number" min="0" step="0.01" inputmode="decimal">
       <div style="height:12px"></div>
       <button class="btn btn-pink" id="saveSettings">Save settings</button>
       <p class="small">Sales are saved on this device only. They don't sync to other devices — a cloud upgrade can come later.</p>
@@ -258,9 +260,10 @@ const money = n => '$' + (Math.round(n*100)/100).toLocaleString('en-US',{minimum
 function load(){
   try{ return JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ return null; }
 }
-function freshState(){ return { defaultGoal: 350, defaultMonthlyGoal: 1400, weeks: {}, months: {} }; }
+function freshState(){ return { defaultGoal: 350, defaultMonthlyGoal: 1400, defaultDailyGoal: 50, weeks: {}, months: {} }; }
 let state = load() || freshState();
 if(state.defaultMonthlyGoal === undefined) state.defaultMonthlyGoal = 1400;
+if(state.defaultDailyGoal === undefined) state.defaultDailyGoal = 50;
 if(!state.months) state.months = {};
 function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
 
@@ -358,15 +361,18 @@ function render(){
 
   const todayIdx = (viewOffset===0) ? new Date().getDay() : -1;
   const maxDay = Math.max(1, ...w.days.map(d=>d||0));
+  const dailyGoal = state.defaultDailyGoal || 0;
   const wrap = document.getElementById('days');
   wrap.innerHTML = '';
   w.days.forEach((v,i)=>{
+    const pctFill = dailyGoal > 0 ? Math.min(100, (v||0)/dailyGoal*100) : ((v||0)/maxDay*100);
     const b = document.createElement('button');
     b.className = 'day' + (i===todayIdx ? ' today' : '');
-    b.innerHTML = '<span class="d">'+DAY_NAMES[i]+'</span><span class="track"><span class="fill" style="width:'+((v||0)/maxDay*100)+'%"></span></span><span class="amt">'+(v===null?'—':money(v).replace('.00',''))+'</span>';
+    b.innerHTML = '<span class="d">'+DAY_NAMES[i]+'</span><span class="track"><span class="fill" style="width:'+pctFill+'%"></span></span><span class="amt">'+(v===null?'—':money(v).replace('.00',''))+'</span>';
     b.onclick = ()=> openDayEditor(i);
     wrap.appendChild(b);
   });
+  document.getElementById('breakFootRight').textContent = dailyGoal > 0 ? ('Bars fill toward ' + money(dailyGoal) + ' / day') : 'Tap a day to edit';
   document.getElementById('todayNote').textContent =
     'Adds to ' + DAY_FULL[new Date().getDay()] + (viewOffset===0 ? '' : ' of the current week — switch back to This week to use quick entry') + '.';
   document.getElementById('addToday').disabled = viewOffset!==0;
@@ -374,6 +380,7 @@ function render(){
   renderWeeks(); renderInsights();
   document.getElementById('defaultGoalInput').value = state.defaultGoal;
   document.getElementById('defaultMonthlyGoalInput').value = state.defaultMonthlyGoal;
+  document.getElementById('defaultDailyGoalInput').value = state.defaultDailyGoal;
   save();
 }
 
@@ -517,10 +524,12 @@ function renderInsights(){
 document.getElementById('saveSettings').onclick = ()=>{
   const v = parseFloat(document.getElementById('defaultGoalInput').value);
   const mv = parseFloat(document.getElementById('defaultMonthlyGoalInput').value);
+  const dv = parseFloat(document.getElementById('defaultDailyGoalInput').value);
   if(!isNaN(v) && v >= 0) state.defaultGoal = v;
   if(!isNaN(mv) && mv >= 0) state.defaultMonthlyGoal = mv;
+  if(!isNaN(dv) && dv >= 0) state.defaultDailyGoal = dv;
   save();
-  alert('Saved 💗 New weeks start at ' + money(state.defaultGoal) + ', new months at ' + money(state.defaultMonthlyGoal) + '.');
+  alert('Saved 💗 New weeks start at ' + money(state.defaultGoal) + ', new months at ' + money(state.defaultMonthlyGoal) + ', daily goal ' + money(state.defaultDailyGoal) + '.');
 };
 document.getElementById('clearAll').onclick = ()=>{
   if(confirm('Erase ALL weeks and settings? This cannot be undone.')){
